@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 16px;
+        }
+
+        div.container {
+            display: flex;
+            flex-direction: column; /* Stack items vertically on small screens */
+        }
+
+        div.left,
+        div.right {
+            width: 100%;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            margin-bottom: 10px;
+            width: 100%; /* Make text input full-width */
+        }
+
+        button {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        button.delete-button {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: 0; /* Adjust margin for better spacing on small screens */
+        }
+
+        @media only screen and (max-width: 768px) {
+            div.container {
+                flex-direction: column;
+            }
+
+            div.left,
+            div.right {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="left">
+            <h2>Timestamp Management:</h2>
+            <table id="timestampTable">
+            </table>
+            <table>
+                <tr>
+                    <td colspan="2">Gross Time</td>
+                    <td id="grossTime"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">Total Out Time</td>
+                    <td id="totalOutTime"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">Total In Time</td>
+                    <td id="totalInTime"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">Can Escape</td>
+                    <td id="canEscape"></td>
+                </tr>
+            </table>
+        </div>
+        <div class="right">
+            <div>
+                <h2>Stored Timestamps for : <span id="Date"></span> </h2>
+                <table id="timestampListTable">
+                    <tbody></tbody>
+                    <tfoot>
+                        <tr>
+                            <td>
+                                <input type="text" id="newTimestamp">
+                            </td>
+                            <td>
+
+                                <button onclick="addTimestamp()">Add Timestamp</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <button onclick="clearLocalStorage()">Clear Local Storage</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <script>
+
+        localDate = localStorage.getItem('timedata.date')
+        $('#Date').text(localStorage.getItem('timedata.date'))
+        if (localDate == null) {
+            var today = new Date();
+            var month = today.getMonth() + 1;
+            var day = today.getDate();
+            var TodayDate = (day < 10 ? '0' + day : day) + '-' + (month < 10 ? '0' + month : month) + '-' + today.getFullYear();
+            localStorage.setItem('timedata.date', TodayDate);
+        }
+
+
+        function getLocalTimestamp() {
+            return JSON.parse(localStorage.getItem('timedata.timestamps')) || [];
+        }
+
+        function refreshData() {
+            var timestamps = getLocalTimestamp();
+            $("#timestampTable").html("<tr><th>In</th><th>Out</th><th>In Time</th><th>Out Time</th></tr>");
+
+            var currentTimestamp = new Date().toLocaleTimeString('en-US', { hour12: true });
+            if (timestamps.length % 2 !== 0) {
+                timestamps.push(currentTimestamp);
+            }
+
+            var totalInTime = 0;
+            var totalOutTime = 0;
+            var totalGrossTime = new Date("01/01/2023 " + timestamps[timestamps.length - 1]) - new Date("01/01/2023 " + timestamps[0]);
+
+            for (var i = 0; i < timestamps.length; i += 2) {
+                var inTime = new Date("01/01/2023 " + timestamps[i]);
+                var outTime = i + 1 < timestamps.length ? new Date("01/01/2023 " + timestamps[i + 1]) : new Date();
+                var timeDifference = outTime - inTime;
+
+                totalInTime += timeDifference;
+
+                var nextInTime = i + 2 < timestamps.length ? new Date("01/01/2023 " + timestamps[i + 2]) : outTime;
+                var totalOutDiff = nextInTime - outTime;
+                totalOutTime += totalOutDiff;
+
+                $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(timeDifference)}</td><td>${formatTimeDifference(totalOutDiff)}</td></tr>`);
+            }
+
+            var firstTimestamp = new Date("01/01/2023 " + timestamps[0]);
+            var estimatedOutTime = new Date(firstTimestamp.getTime() + totalOutTime + 28800000);
+
+            if (totalInTime < 28800000) {
+                var remaining_time = (8 * 3600000) - totalInTime;
+                timestamps.push(currentTimestamp);
+                timestamps.push(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
+                $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(remaining_time)}</td></tr>`);
+            }
+
+            function formatTimeDifference(timeDifference) {
+                var hours = Math.floor(timeDifference / 3600000);
+                var minutes = Math.floor((timeDifference % 3600000) / 60000);
+                return `${hours}h ${minutes}m`;
+            }
+
+            $("#grossTime").text(formatTimeDifference(totalGrossTime));
+            $("#totalOutTime").text(formatTimeDifference(totalOutTime));
+            $("#totalInTime").text(formatTimeDifference(totalInTime));
+            $("#canEscape").text(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
+            displayStoredTimestamps();
+            updateTimestampInput();
+            // gapi.load('client', loadGoogleSheetsApi,initClient);
+
+            //     updateGoogleSheet(timestamps);
+
+        }
+
+        function addTimestamp() {
+            var newTimestamp = $("#newTimestamp").val();
+            var timestamps = getLocalTimestamp();
+            if (validateTimeFormat(newTimestamp)) {
+                timestamps.push(newTimestamp);
+                localStorage.setItem('timedata.timestamps', JSON.stringify(timestamps));
+                refreshData();
+            } else {
+                alert("Invalid time format. Please use hh:mm:ss AM/PM");
+            }
+        }
+
+        function validateTimeFormat(timeString) {
+            var regex = /^(1[0-2]|0?[1-9]):([0-5][0-9]) ([AP][M])$/;
+            return regex.test(timeString);
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('timedata.timestamps');
+            localStorage.removeItem('timedata.date');
+            refreshData();
+        }
+
+        function displayStoredTimestamps() {
+            var storedTimestampsTable = $("#timestampListTable");
+            storedTimestampsTable.find('tbody').html("");
+            var timestamps = getLocalTimestamp();
+            timestamps.forEach((timestamp, index) => {
+                var deleteButton = $("<button>").text("Delete").click(() => deleteTimestamp(index));
+
+                storedTimestampsTable.find('tbody').append(`<tr><td>${timestamp}</td><td></td></tr>`);
+                storedTimestampsTable.find('tbody tr:last td:last').append(deleteButton);
+            });
+        }
+
+        function deleteTimestamp(index) {
+            var timestamps = getLocalTimestamp();
+            timestamps.splice(index, 1);
+            localStorage.setItem('timedata.timestamps', JSON.stringify(timestamps));
+            refreshData();
+        }
+
+        function updateTimestampInput() {
+            var currentDate = new Date();
+            var hours = currentDate.getHours() % 12 || 12;
+            var minutes = (currentDate.getMinutes() < 10 ? '0' : '') + currentDate.getMinutes();
+            var ampm = currentDate.getHours() >= 12 ? 'PM' : 'AM';
+            var currentTime = `${hours}:${minutes} ${ampm}`;
+            $("#newTimestamp").val(currentTime);
+        }
+
+        //Goole sheet Update
+        // Function to update Google Sheet
+        function updateGoogleSheet(timestamps) {
+            gapi.client.sheets.spreadsheets.values.clear({
+                spreadsheetId: '1FuQ8u2eR1e9gGqqlICsWCh-vKkvHWe2iAeZ1KqReb5E',
+                range: 'Sheet1'  // Update with your sheet name
+            }).then(function (response) {
+                // Write new data to the sheet
+                gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: '1FuQ8u2eR1e9gGqqlICsWCh-vKkvHWe2iAeZ1KqReb5E',
+                    range: 'Sheet1',  // Update with your sheet name
+                    valueInputOption: 'RAW',
+                    resource: {
+                        values: [['In', 'Out', 'In Time', 'Out Time'], ...timestamps]
+                    }
+                }).then(function (response) {
+                    console.log('Sheet updated successfully:', response);
+                }, function (error) {
+                    console.error('Error updating sheet:', error);
+                });
+            }, function (error) {
+                console.error('Error clearing sheet:', error);
+            });
+        }
+
+        // // Function to load Google Sheets API
+        // function loadGoogleSheetsApi() {
+        //     gapi.client.load('sheets', 'v4').then(function () {
+        //         console.log('Google Sheets API loaded.');
+        //     }, function (error) {
+        //         console.error('Error loading Google Sheets API:', error);
+        //     });
+        // }
+
+        gapi.load('client', loadGoogleSheetsApi, initClient);
+        function loadGoogleSheetsApi() {
+            gapi.client.setApiKey("AIzaSyCREOfgln9MX2eFOTBvVqewOLQsyBA2s5w");
+            return gapi.client.load("https://sheets.googleapis.com/$discovery/rest?version=v4")
+                .then(function () { console.log("GAPI client loaded for API"); },
+                    function (err) { console.error("Error loading GAPI client for API", err); });
+        }
+
+        // Function to authenticate and initialize the API
+        function initClient() {
+            return gapi.client.sheets.spreadsheets.get({
+                "spreadsheetId": "1FuQ8u2eR1e9gGqqlICsWCh-vKkvHWe2iAeZ1KqReb5E",
+                "includeGridData": true
+            })
+                .then(function (response) {
+                    // Handle the results here (response.result has the parsed body).
+                    console.log("Response", response);
+                },
+                    function (err) { console.error("Execute error", err); });
+        }
+        // Load the Google Sheets API client
+
+
+        refreshData();
+        setInterval(refreshData, 60000);
+    </script>
+
+</body>
+
+</html>
