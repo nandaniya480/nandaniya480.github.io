@@ -13,7 +13,8 @@
 
         div.container {
             display: flex;
-            flex-direction: column; /* Stack items vertically on small screens */
+            flex-direction: column;
+            /* Stack items vertically on small screens */
         }
 
         div.left,
@@ -42,7 +43,8 @@
         input[type="text"] {
             padding: 8px;
             margin-bottom: 10px;
-            width: 100%; /* Make text input full-width */
+            width: 100%;
+            /* Make text input full-width */
         }
 
         button {
@@ -65,7 +67,8 @@
             border: none;
             padding: 5px 10px;
             cursor: pointer;
-            margin-left: 0; /* Adjust margin for better spacing on small screens */
+            margin-left: 0;
+            /* Adjust margin for better spacing on small screens */
         }
 
         @media only screen and (max-width: 768px) {
@@ -209,15 +212,24 @@
 
         function addTimestamp() {
             var newTimestamp = $("#newTimestamp").val();
-            alert (newTimestamp);
             var timestamps = getLocalTimestamp();
-            if (newTimestamp) {
-                timestamps.push(newTimestamp);
+            var FormatedTime = convertTo12HourFormat(newTimestamp);
+            
+            if (FormatedTime) {
+                timestamps.push(FormatedTime);
                 localStorage.setItem('timedata.timestamps', JSON.stringify(timestamps));
                 refreshData();
             } else {
                 alert("Invalid time format. Please use hh:mm:ss AM/PM");
             }
+        }
+
+        function convertTo12HourFormat(time) {
+            var [hours, minutes] = time.split(":");
+            var period = hours >= 12 ? "PM" : "AM";
+            hours = hours % 12 || 12;
+            minutes = minutes.padStart(2, "0");
+            return `${hours}:${minutes} ${period}`;
         }
 
         // function validateTimeFormat(timeString) {
