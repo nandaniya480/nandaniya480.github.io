@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>12-Hour Time Input</title>
+</head>
+<body>
+
+<label for="timeInput">Select a time:</label>
+<input type="time" id="timeInput">
+
+<script>
+  // Add event listener to the time input
+  document.getElementById("timeInput").addEventListener("input", function() {
+    // Get the selected time
+    var selectedTime = this.value;
+
+    // Convert the selected time to a 12-hour format
+    var formattedTime = convertTo12HourFormat(selectedTime);
+
+    // Set the value of the input to the formatted time
+    this.value = formattedTime;
+  });
+
+  // Function to convert time to 12-hour format
+  function convertTo12HourFormat(time) {
+    var [hours, minutes] = time.split(":");
+    var period = hours >= 12 ? "PM" : "AM";
+
+    // Convert hours to 12-hour format
+    hours = hours % 12 || 12;
+
+    // Add leading zero to minutes if needed
+    minutes = minutes.padStart(2, "0");
+
+    // Return the formatted time
+    return `${hours}:${minutes} ${period}`;
+  }
+</script>
+
+</body>
+</html>
