@@ -114,8 +114,7 @@
                     <tfoot>
                         <tr>
                             <td>
-                                <input type="text" id="newTimestamp">
-                                <input type="time" id="timeInput">
+                                <input type="time" id="newTimestamp">
                             </td>
                             <td>
 
@@ -210,8 +209,9 @@
 
         function addTimestamp() {
             var newTimestamp = $("#newTimestamp").val();
+            alert (newTimestamp);
             var timestamps = getLocalTimestamp();
-            if (validateTimeFormat(newTimestamp)) {
+            if (newTimestamp) {
                 timestamps.push(newTimestamp);
                 localStorage.setItem('timedata.timestamps', JSON.stringify(timestamps));
                 refreshData();
@@ -220,10 +220,10 @@
             }
         }
 
-        function validateTimeFormat(timeString) {
-            var regex = /^(1[0-2]|0?[1-9]):([0-5][0-9]) ([AP][M])$/;
-            return regex.test(timeString);
-        }
+        // function validateTimeFormat(timeString) {
+        //     var regex = /^(1[0-2]|0?[1-9]):([0-5][0-9]) ([AP][M])$/;
+        //     return regex.test(timeString);
+        // }
 
         function clearLocalStorage() {
             localStorage.removeItem('timedata.timestamps');
