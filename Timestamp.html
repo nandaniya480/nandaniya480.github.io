@@ -183,9 +183,9 @@
             }
 
             var firstTimestamp = new Date("01/01/2023 " + timestamps[0]);
-            var estimatedOutTime = new Date(firstTimestamp.getTime() + totalOutTime + 28800000);
+            var estimatedOutTime = new Date(firstTimestamp.getTime() + totalOutTime + 30600000);
 
-            if (totalInTime < 28800000) {
+            if (totalInTime < 30600000) {
                 var remaining_time = (8 * 3600000) - totalInTime;
                 timestamps.push(currentTimestamp);
                 timestamps.push(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
