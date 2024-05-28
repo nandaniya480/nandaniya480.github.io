@@ -186,7 +186,7 @@
             var estimatedOutTime = new Date(firstTimestamp.getTime() + totalOutTime + 30600000);
 
             if (totalInTime < 30600000) {
-                var remaining_time = (8 * 3600000) - totalInTime;
+                var remaining_time = (8.5 * 3600000) - totalInTime;
                 timestamps.push(currentTimestamp);
                 timestamps.push(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
                 $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(remaining_time)}</td></tr>`);
