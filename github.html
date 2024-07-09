@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timestamp Management</title>
+</head>
+
+<body>
+    <div class="container">
+        <div class="left">
+            <h2>Timestamp Management:</h2>
+            <table id="timestampTable">
+                <thead>
+                    <tr>
+                        <th>In</th>
+                        <th>Out</th>
+                        <th>In Time</th>
+                        <th>Out Time</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <table>
+                <tr>
+                    <td colspan="2">Gross Time</td>
+                    <td id="grossTime"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">Total Out Time</td>
+                    <td id="totalOutTime"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">Total In Time</td>
+                    <td id="totalInTime"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">Can Escape</td>
+                    <td id="canEscape"></td>
+                </tr>
+            </table>
+        </div>
+        <div class="right">
+            <div>
+                <h2>Stored Timestamps for: <span id="Date"></span></h2>
+                <table id="timestampListTable">
+                    <tbody></tbody>
+                    <tfoot>
+                        <tr>
+                            <td>
+                                <input type="time" id="newTimestamp">
+                            </td>
+                            <td>
+                                <button onclick="addTimestamp()">Add Timestamp</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <button onclick="clearTimestamps()">Clear Timestamps</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to fetch timestamps from GitHub repository
+        function fetchTimestamps() {
+            fetch('https://raw.githubusercontent.com/nandaniya480/nandaniya480.github.io/main/timestamps.json')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Timestamps fetched:', data);
+                    displayStoredTimestamps(data);
+                    refreshData(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching timestamps:', error);
+                });
+        }
+
+        // Function to save timestamps to GitHub repository
+        function saveTimestamps(timestamps) {
+            const apiUrl = 'https://api.github.com/repos/nandaniya480/nandaniya480.github.io/contents/timestamps.json';
+            const authToken = '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'; // Generate a personal access token with repo scope
+
+            fetch(apiUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${authToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: 'Update timestamps',
+                    content: btoa(JSON.stringify(timestamps)), // Base64 encode content
+                    sha: 'SHA_OF_EXISTING_FILE', // Get SHA of existing file using GitHub API or initially null
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Timestamps updated:', data);
+                    // Optionally handle response
+                })
+                .catch(error => {
+                    console.error('Error updating timestamps:', error);
+                });
+        }
+
+        // Function to add a new timestamp
+        function addTimestamp() {
+            var newTimestamp = document.getElementById('newTimestamp').value;
+            var timestamps = getStoredTimestamps();
+            timestamps.push(newTimestamp);
+            saveTimestamps(timestamps);
+        }
+
+        // Function to clear all timestamps
+        function clearTimestamps() {
+            var timestamps = [];
+            saveTimestamps(timestamps);
+        }
+
+        // Function to get stored timestamps from local or default empty array
+        function getStoredTimestamps() {
+            return JSON.parse(localStorage.getItem('timestamps')) || [];
+        }
+
+        // Function to display stored timestamps in the UI
+        function displayStoredTimestamps(timestamps) {
+            var tableBody = document.getElementById('timestampListTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+            timestamps.forEach(timestamp => {
+                var row = tableBody.insertRow();
+                var cell = row.insertCell();
+                cell.appendChild(document.createTextNode(timestamp));
+            });
+        }
+
+        function refreshData() {
+            var timestamps = getLocalTimestamp();
+            $("#timestampTable").html("<tr><th>In</th><th>Out</th><th>In Time</th><th>Out Time</th></tr>");
+
+            var currentTimestamp = new Date().toLocaleTimeString('en-US', { hour12: true });
+            if (timestamps.length % 2 !== 0) {
+                timestamps.push(currentTimestamp);
+            }
+
+            var totalInTime = 0;
+            var totalOutTime = 0;
+            var totalGrossTime = new Date("01/01/2023 " + timestamps[timestamps.length - 1]) - new Date("01/01/2023 " + timestamps[0]);
+
+            for (var i = 0; i < timestamps.length; i += 2) {
+                var inTime = new Date("01/01/2023 " + timestamps[i]);
+                var outTime = i + 1 < timestamps.length ? new Date("01/01/2023 " + timestamps[i + 1]) : new Date();
+                var timeDifference = outTime - inTime;
+
+                totalInTime += timeDifference;
+
+                var nextInTime = i + 2 < timestamps.length ? new Date("01/01/2023 " + timestamps[i + 2]) : outTime;
+                var totalOutDiff = nextInTime - outTime;
+                totalOutTime += totalOutDiff;
+
+                $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(timeDifference)}</td><td>${formatTimeDifference(totalOutDiff)}</td></tr>`);
+            }
+
+            var firstTimestamp = new Date("01/01/2023 " + timestamps[0]);
+            var estimatedOutTime = new Date(firstTimestamp.getTime() + totalOutTime + 30600000);
+
+            if (totalInTime < 30600000) {
+                var remaining_time = (8.5 * 3600000) - totalInTime;
+                timestamps.push(currentTimestamp);
+                timestamps.push(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
+                $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(remaining_time)}</td></tr>`);
+            }
+
+            function formatTimeDifference(timeDifference) {
+                var hours = Math.floor(timeDifference / 3600000);
+                var minutes = Math.floor((timeDifference % 3600000) / 60000);
+                return `${hours}h ${minutes}m`;
+            }
+
+            $("#grossTime").text(formatTimeDifference(totalGrossTime));
+            $("#totalOutTime").text(formatTimeDifference(totalOutTime));
+            $("#totalInTime").text(formatTimeDifference(totalInTime));
+            $("#canEscape").text(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
+            displayStoredTimestamps();
+            updateTimestampInput();
+            // gapi.load('client', loadGoogleSheetsApi,initClient);
+
+            //     updateGoogleSheet(timestamps);
+
+        }
+
+
+        // Initial fetch of timestamps when the page loads
+        fetchTimestamps();
+    </script>
+</body>
+
+</html>
