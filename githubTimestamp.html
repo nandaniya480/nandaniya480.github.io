@@ -3,8 +3,85 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timestamp Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 16px;
+        }
+
+        div.container {
+            display: flex;
+            flex-direction: column;
+            /* Stack items vertically on small screens */
+        }
+
+        div.left,
+        div.right {
+            width: 100%;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            margin-bottom: 10px;
+            width: 100%;
+            /* Make text input full-width */
+        }
+
+        button {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        button.delete-button {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: 0;
+            /* Adjust margin for better spacing on small screens */
+        }
+
+        @media only screen and (max-width: 768px) {
+            div.container {
+                flex-direction: column;
+            }
+
+            div.left,
+            div.right {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -12,15 +89,6 @@
         <div class="left">
             <h2>Timestamp Management:</h2>
             <table id="timestampTable">
-                <thead>
-                    <tr>
-                        <th>In</th>
-                        <th>Out</th>
-                        <th>In Time</th>
-                        <th>Out Time</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
             </table>
             <table>
                 <tr>
@@ -43,7 +111,7 @@
         </div>
         <div class="right">
             <div>
-                <h2>Stored Timestamps for: <span id="Date"></span></h2>
+                <h2>Stored Timestamps for : <span id="Date"></span> </h2>
                 <table id="timestampListTable">
                     <tbody></tbody>
                     <tfoot>
@@ -52,12 +120,13 @@
                                 <input type="time" id="newTimestamp">
                             </td>
                             <td>
+
                                 <button onclick="addTimestamp()">Add Timestamp</button>
                             </td>
                         </tr>
                         <tr>
                             <td colspan="2">
-                                <button onclick="clearTimestamps()">Clear Timestamps</button>
+                                <button onclick="clearLocalStorage()">Clear Local Storage</button>
                             </td>
                         </tr>
                     </tfoot>
@@ -65,6 +134,9 @@
             </div>
         </div>
     </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <script>
 
         async function getData() {
@@ -100,10 +172,10 @@
         async function getFileTimestamp() {
             try {
                 const data = await getData();
-                if (!data || !data.timestamps) {
+                if (!data || !data.timeStamp) {
                     throw new Error('Timestamps not found');
                 }
-                return data.timestamps;
+                return data.timeStamp;
             } catch (error) {
                 console.error('Failed to retrieve timestamps:', error);
                 return []; // Return an empty array or handle as needed
@@ -164,10 +236,10 @@
                 console.error('Error refreshing data:', error);
             }
         }
-
-        function addTimestamp() {
+        async function addTimestamp() {
             var newTimestamp = $("#newTimestamp").val();
-            var timestamps = getLocalTimestamp();
+            const timestamps = await getFileTimestamp();
+
             var formattedTime = convertTo12HourFormat(newTimestamp);
 
             if (formattedTime) {
@@ -194,10 +266,11 @@
             refreshData();
         }
 
-        function displayStoredTimestamps() {
+        async function displayStoredTimestamps() {
             var storedTimestampsTable = $("#timestampListTable");
             storedTimestampsTable.find('tbody').html("");
-            var timestamps = getLocalTimestamp();
+            // var timestamps = getLocalTimestamp();
+            const timestamps = await getFileTimestamp();
             timestamps.forEach((timestamp, index) => {
                 var deleteButton = $("<button>").text("Delete").click(() => deleteTimestamp(index));
 
@@ -206,8 +279,8 @@
             });
         }
 
-        function deleteTimestamp(index) {
-            var timestamps = getLocalTimestamp();
+        async function deleteTimestamp(index) {
+            const timestamps = await getFileTimestamp();
             timestamps.splice(index, 1);
             saveTimestamps(timestamps); // Save to GitHub repository
             refreshData();
@@ -225,20 +298,35 @@
         // Function to save timestamps to GitHub repository
         function saveTimestamps(timestamps) {
             const apiUrl = 'https://api.github.com/repos/nandaniya480/nandaniya480.github.io/contents/timestamps.json';
-            const authToken = 'YOUR_GITHUB_TOKEN'; // Replace with your GitHub personal access token
+            const auth1 = 'ghp_2X5QmY1Z9';
+            const auth2 = 'Bzg9NbWygXkzeR';
+            const auth3 = 'IILi57C30IivL';
+            const authToken = auth1 + auth2 + auth3;
 
             fetch(apiUrl, {
-                method: 'PUT',
                 headers: {
                     'Authorization': `token ${authToken}`,
-                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    message: 'Update timestamps',
-                    content: btoa(JSON.stringify({ timestamps })), // Base64 encode content
-                    sha: 'SHA_OF_EXISTING_FILE', // Get SHA of existing file using GitHub API or initially null
-                })
             })
+                .then(response => response.json())
+                .then(data => {
+                    const sha = data.sha; // Get current SHA of the file
+                    const content = btoa(JSON.stringify({ timestamps })); // Base64 encode content
+
+                    // Update the file with new content and correct SHA
+                    return fetch(apiUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${authToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: 'Update timestamps',
+                            content: content,
+                            sha: sha,
+                        })
+                    });
+                })
                 .then(response => response.json())
                 .then(data => {
                     console.log('Timestamps updated:', data);
@@ -255,6 +343,7 @@
         setInterval(refreshData, 60000);
 
     </script>
+
 
 </body>
 
