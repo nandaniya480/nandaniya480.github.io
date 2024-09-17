@@ -154,60 +154,74 @@
             return JSON.parse(localStorage.getItem('timedata.timestamps')) || [];
         }
 
-        function refreshData() {
-            var timestamps = getLocalTimestamp();
-            $("#timestampTable").html("<tr><th>In</th><th>Out</th><th>In Time</th><th>Out Time</th></tr>");
-
-            var currentTimestamp = new Date().toLocaleTimeString('en-US', { hour12: true });
-            if (timestamps.length % 2 !== 0) {
-                timestamps.push(currentTimestamp);
-            }
-
-            var totalInTime = 0;
-            var totalOutTime = 0;
-            var totalGrossTime = new Date("01/01/2023 " + timestamps[timestamps.length - 1]) - new Date("01/01/2023 " + timestamps[0]);
-
-            for (var i = 0; i < timestamps.length; i += 2) {
-                var inTime = new Date("01/01/2023 " + timestamps[i]);
-                var outTime = i + 1 < timestamps.length ? new Date("01/01/2023 " + timestamps[i + 1]) : new Date();
-                var timeDifference = outTime - inTime;
-
-                totalInTime += timeDifference;
-
-                var nextInTime = i + 2 < timestamps.length ? new Date("01/01/2023 " + timestamps[i + 2]) : outTime;
-                var totalOutDiff = nextInTime - outTime;
-                totalOutTime += totalOutDiff;
-
-                $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(timeDifference)}</td><td>${formatTimeDifference(totalOutDiff)}</td></tr>`);
-            }
-
-            var firstTimestamp = new Date("01/01/2023 " + timestamps[0]);
-            var estimatedOutTime = new Date(firstTimestamp.getTime() + totalOutTime + 30600000);
-
-            if (totalInTime < 30600000) {
-                var remaining_time = (8.5 * 3600000) - totalInTime;
-                timestamps.push(currentTimestamp);
-                timestamps.push(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
-                $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(remaining_time)}</td></tr>`);
-            }
-
-            function formatTimeDifference(timeDifference) {
-                var hours = Math.floor(timeDifference / 3600000);
-                var minutes = Math.floor((timeDifference % 3600000) / 60000);
-                return `${hours}h ${minutes}m`;
-            }
-
-            $("#grossTime").text(formatTimeDifference(totalGrossTime));
-            $("#totalOutTime").text(formatTimeDifference(totalOutTime));
-            $("#totalInTime").text(formatTimeDifference(totalInTime));
-            $("#canEscape").text(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
-            displayStoredTimestamps();
-            updateTimestampInput();
-            // gapi.load('client', loadGoogleSheetsApi,initClient);
-
-            //     updateGoogleSheet(timestamps);
-
+    function refreshData() {
+        var timestamps = getLocalTimestamp();
+        $("#timestampTable").html("<tr><th>In</th><th>Out</th><th>In Time</th><th>Out Time</th></tr>");
+    
+        var currentTimestamp = new Date().toLocaleTimeString('en-US', { hour12: true });
+        if (timestamps.length % 2 !== 0) {
+            timestamps.push(currentTimestamp);
         }
+    
+        var totalInTime = 0;
+        var totalOutTime = 0;
+    
+        // Define break time
+        var breakStart = new Date("01/01/2023 13:30:00"); // 1:30 PM
+        var breakEnd = new Date("01/01/2023 14:30:00");   // 2:30 PM
+        var breakDuration = breakEnd - breakStart;
+    
+        var totalGrossTime = new Date("01/01/2023 " + timestamps[timestamps.length - 1]) - new Date("01/01/2023 " + timestamps[0]);
+    
+        for (var i = 0; i < timestamps.length; i += 2) {
+            var inTime = new Date("01/01/2023 " + timestamps[i]);
+            var outTime = i + 1 < timestamps.length ? new Date("01/01/2023 " + timestamps[i + 1]) : new Date();
+            var timeDifference = outTime - inTime;
+    
+            // Check if the break overlaps with the in-out period and subtract break time
+            if (inTime < breakEnd && outTime > breakStart) {
+                var overlapStart = inTime < breakStart ? breakStart : inTime;
+                var overlapEnd = outTime > breakEnd ? breakEnd : outTime;
+                var overlapTime = overlapEnd - overlapStart;
+                timeDifference -= overlapTime; // Subtract the overlapping break time
+            }
+    
+            totalInTime += timeDifference;
+    
+            var nextInTime = i + 2 < timestamps.length ? new Date("01/01/2023 " + timestamps[i + 2]) : outTime;
+            var totalOutDiff = nextInTime - outTime;
+            totalOutTime += totalOutDiff;
+    
+            $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(timeDifference)}</td><td>${formatTimeDifference(totalOutDiff)}</td></tr>`);
+        }
+    
+        var firstTimestamp = new Date("01/01/2023 " + timestamps[0]);
+        var estimatedOutTime = new Date(firstTimestamp.getTime() + totalOutTime + 30600000);
+    
+        if (totalInTime < 30600000) {
+            var remaining_time = (8.5 * 3600000) - totalInTime;
+            timestamps.push(currentTimestamp);
+            timestamps.push(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
+            $("#timestampTable").append(`<tr><td>${timestamps[i]}</td><td>${timestamps[i + 1]}</td><td>${formatTimeDifference(remaining_time)}</td></tr>`);
+        }
+    
+        function formatTimeDifference(timeDifference) {
+            var hours = Math.floor(timeDifference / 3600000);
+            var minutes = Math.floor((timeDifference % 3600000) / 60000);
+            return `${hours}h ${minutes}m`;
+        }
+    
+        $("#grossTime").text(formatTimeDifference(totalGrossTime));
+        $("#totalOutTime").text(formatTimeDifference(totalOutTime));
+        $("#totalInTime").text(formatTimeDifference(totalInTime));
+        $("#canEscape").text(estimatedOutTime.toLocaleTimeString('en-US', { hour12: true }));
+        displayStoredTimestamps();
+        updateTimestampInput();
+        // gapi.load('client', loadGoogleSheetsApi, initClient);
+    
+        // updateGoogleSheet(timestamps);
+    }
+
 
         function addTimestamp() {
             var newTimestamp = $("#newTimestamp").val();
