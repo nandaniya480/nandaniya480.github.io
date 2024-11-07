@@ -59,8 +59,11 @@ function calculateInOutTimesForSheet() {
     }
 
     if (firstTimestamp) {
+      
       const eightAndHalfHoursInMs = 8.5 * 60 * 60 * 1000;
-      const estimatedOutTime = new Date(firstTimestamp.getTime() + totalInTime + eightAndHalfHoursInMs);
+      const addTime = eightAndHalfHoursInMs + totalOutTime ;
+
+      const estimatedOutTime = new Date(firstTimestamp.getTime() + addTime);
       let escapeHour = estimatedOutTime.getHours();
       const escapeMinute = estimatedOutTime.getMinutes();
       const period = escapeHour >= 12 ? 'PM' : 'AM';
