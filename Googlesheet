@@ -3,21 +3,20 @@ function calculateInOutTimesForSheet() {
   const dataRange = sheet.getDataRange();
   const data = dataRange.getValues();
 
+  let weeklyTotalInTime = 0;
+
   for (let i = 1; i < data.length; i++) {
     let totalInTime = 0;
     let totalOutTime = 0;
     let firstTimestamp = null;
-    // const dayDate = new Date(data[i][0]);  
     const dayDate = data[i][0];
-    // console.log(dayDate)
+    const dayName = dayDate.toString().slice(0, 3);
+
     for (let j = 4; j < data[i].length; j += 2) {
       const inTime = data[i][j];
       let outTime = data[i][j + 1];
-
-      // Get the current date and time if outTime is missing
       const currentDate = new Date();
       const currentTime = currentDate.toLocaleTimeString('en-US', { hour12: false });
-
       const year = dayDate.getFullYear();
       const month = String(dayDate.getMonth() + 1).padStart(2, '0');
       const day = String(dayDate.getDate()).padStart(2, '0');
@@ -30,17 +29,11 @@ function calculateInOutTimesForSheet() {
       if (inTime && outTime) {
         const inDateTime = parseTime(dayDate, inTime);
         const outDateTime = parseTime(dayDate, outTime);
-
-        // Store the first in-time for escape calculation
         if (!firstTimestamp) {
           firstTimestamp = inDateTime;
         }
-        // console.log(firstTimestamp)
-        // Calculate the in-time duration
         const inDuration = outDateTime - inDateTime;
         totalInTime += inDuration;
-
-        // Calculate out-time duration if there's a next in-time
         const nextInTime = j + 2 < data[i].length ? data[i][j + 2] : null;
         if (nextInTime) {
           const nextInDateTime = parseTime(dayDate, nextInTime);
@@ -50,28 +43,35 @@ function calculateInOutTimesForSheet() {
       }
     }
 
-    // Update Total In Time and Total Out Time on the sheet
-    sheet.getRange(i + 1, 2).setValue(formatDuration(totalInTime));  // Column B
-    sheet.getRange(i + 1, 3).setValue(formatDuration(totalOutTime)); // Column C
+    // Accumulate total in-time for weekdays
+    if (["Mon", "Tue", "Wed", "Thu", "Fri"].includes(dayName)) {
+      weeklyTotalInTime += totalInTime;
+    }
 
-    // Calculate and format estimated escape time
+    // For Saturday, update total in-time with the weekly total
+    if (dayName === "Sat") {
+      sheet.getRange(i + 1, 2).setValue(formatDuration(weeklyTotalInTime)); // Column B for Total In Time
+      weeklyTotalInTime = 0; // Reset after updating
+    } else {
+      // Update Total In Time and Total Out Time for other days
+      sheet.getRange(i + 1, 2).setValue(formatDuration(totalInTime));
+      sheet.getRange(i + 1, 3).setValue(formatDuration(totalOutTime));
+    }
+
     if (firstTimestamp) {
-      const eightAndHalfHoursInMs = 8.5 * 60 * 60 * 1000; // 8 hours 30 minutes
+      const eightAndHalfHoursInMs = 8.5 * 60 * 60 * 1000;
       const estimatedOutTime = new Date(firstTimestamp.getTime() + totalInTime + eightAndHalfHoursInMs);
-
-      // Format estimated out time in 12-hour format with AM/PM
       let escapeHour = estimatedOutTime.getHours();
       const escapeMinute = estimatedOutTime.getMinutes();
       const period = escapeHour >= 12 ? 'PM' : 'AM';
-      escapeHour = escapeHour % 12 || 12;  // Convert hour to 12-hour format
-
+      escapeHour = escapeHour % 12 || 12;
       const escapeTimeFormatted = `${escapeHour}:${String(escapeMinute).padStart(2, '0')} ${period}`;
       sheet.getRange(i + 1, 4).setValue(escapeTimeFormatted);  // Column D
     }
   }
 }
 
-// Helper function to parse a date and time into a Date object
+// Helper functions remain the same
 function parseTime(date, time) {
   if (time instanceof Date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.getHours(), time.getMinutes());
@@ -81,7 +81,6 @@ function parseTime(date, time) {
   }
 }
 
-// Helper function to format duration in hours and minutes
 function formatDuration(duration) {
   const hours = Math.floor(duration / (1000 * 60 * 60));
   const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
