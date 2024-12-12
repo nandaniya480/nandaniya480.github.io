@@ -2,8 +2,11 @@ function calculateInOutTimesForSheet() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
   const dataRange = sheet.getDataRange();
   const data = dataRange.getValues();
+  const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   let weeklyTotalInTime = 0;
+  let totalPlusMinus = 0
+  const eightAndHalfHoursInMs = 8.5 * 60 * 60 * 1000;
 
   for (let i = 1; i < data.length; i++) {
     let totalInTime = 0;
@@ -11,22 +14,22 @@ function calculateInOutTimesForSheet() {
     let firstTimestamp = null;
     const dayDate = data[i][0];
     const dayName = dayDate.toString().slice(0, 3);
+    const currentDate = new Date();
+    const currentTime = currentDate.toLocaleTimeString('en-US', { hour12: false });
 
     for (let j = 4; j < data[i].length; j += 2) {
       const inTime = data[i][j];
       let outTime = data[i][j + 1];
-      const currentDate = new Date();
-      const currentTime = currentDate.toLocaleTimeString('en-US', { hour12: false });
       const year = dayDate.getFullYear();
       const month = String(dayDate.getMonth() + 1).padStart(2, '0');
       const day = String(dayDate.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
 
-      if (!outTime) {
+      if (!outTime && inTime) {
         outTime = new Date(`${formattedDate}T${currentTime}`);
       }
 
-      if (inTime && outTime) {
+      if (inTime && outTime && String(inTime).trim() !== '' && String(outTime).trim() !== '') {
         const inDateTime = parseTime(dayDate, inTime);
         const outDateTime = parseTime(dayDate, outTime);
         if (!firstTimestamp) {
@@ -43,25 +46,12 @@ function calculateInOutTimesForSheet() {
       }
     }
 
-    // Accumulate total in-time for weekdays
-    if (["Mon", "Tue", "Wed", "Thu", "Fri"].includes(dayName)) {
+    if (daysOfWeek.includes(dayName)) {
       weeklyTotalInTime += totalInTime;
     }
 
-    // For Saturday, update total in-time with the weekly total
-    if (dayName === "Sat") {
-      sheet.getRange(i + 1, 2).setValue(formatDuration(weeklyTotalInTime)); // Column B for Total In Time
-      weeklyTotalInTime = 0; // Reset after updating
-    } else {
-      // Update Total In Time and Total Out Time for other days
-      sheet.getRange(i + 1, 2).setValue(formatDuration(totalInTime));
-      sheet.getRange(i + 1, 3).setValue(formatDuration(totalOutTime));
-    }
-
     if (firstTimestamp) {
-      
-      const eightAndHalfHoursInMs = 8.5 * 60 * 60 * 1000;
-      const addTime = eightAndHalfHoursInMs + totalOutTime ;
+      const addTime = eightAndHalfHoursInMs + totalOutTime;
 
       const estimatedOutTime = new Date(firstTimestamp.getTime() + addTime);
       let escapeHour = estimatedOutTime.getHours();
@@ -69,12 +59,42 @@ function calculateInOutTimesForSheet() {
       const period = escapeHour >= 12 ? 'PM' : 'AM';
       escapeHour = escapeHour % 12 || 12;
       const escapeTimeFormatted = `${escapeHour}:${String(escapeMinute).padStart(2, '0')} ${period}`;
-      sheet.getRange(i + 1, 4).setValue(escapeTimeFormatted);  // Column D
+
+
+      const remainingTimeInMs = eightAndHalfHoursInMs - totalInTime;
+      const remainingTimeFormatted = `( ${formatDuration(remainingTimeInMs)} )`;
+
+      const today = new Date();
+      const isToday =
+        dayDate.getDate() === today.getDate() &&
+        dayDate.getMonth() === today.getMonth() &&
+        dayDate.getFullYear() === today.getFullYear();
+
+      const todayIndex = daysOfWeek.indexOf(dayName);
+      if (isToday) {
+        if (todayIndex > 0) {
+          const pastDaysLength = daysOfWeek.slice(0, todayIndex).length;
+          totalPlusMinus = ((eightAndHalfHoursInMs * (pastDaysLength)) + totalInTime) - weeklyTotalInTime;
+        }
+      }
+
+      const currentTime = isToday ? ` ${today.toLocaleTimeString('en-US', { hour12: true })}` : '';
+      sheet.getRange(i + 1, 4).setValue(`${escapeTimeFormatted} ${remainingTimeFormatted}${currentTime}`);
+    }
+
+    if (dayName === "Sun") {
+      let currentWeek = isDateInCurrentWeek(dayDate);
+      sheet.getRange(i + 1, 2).setValue(`${formatDuration(weeklyTotalInTime)}${currentWeek ? ` (${formatDuration(totalPlusMinus)})` : ""}`);
+      sheet.getRange(i + 1, 3).setValue(formatDuration((42.5 * 60 * 60 * 1000) - weeklyTotalInTime));
+      weeklyTotalInTime = 0;
+      totalPlusMinus = 0;
+    } else {
+      sheet.getRange(i + 1, 2).setValue(totalInTime > 0 ? formatDuration(totalInTime) : "");
+      sheet.getRange(i + 1, 3).setValue(totalOutTime > 0 ? formatDuration(totalOutTime) : "");
     }
   }
 }
 
-// Helper functions remain the same
 function parseTime(date, time) {
   if (time instanceof Date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.getHours(), time.getMinutes());
@@ -85,7 +105,30 @@ function parseTime(date, time) {
 }
 
 function formatDuration(duration) {
-  const hours = Math.floor(duration / (1000 * 60 * 60));
-  const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
-  return `${hours}h ${minutes}m`;
+  const isNegative = duration < 0;
+  const absDuration = Math.abs(duration);
+
+  const hours = String(Math.floor(absDuration / (1000 * 60 * 60)));
+  const minutes = String(Math.floor((absDuration % (1000 * 60 * 60)) / (1000 * 60)));
+
+  return `${isNegative ? '-' : ''}${hours}h ${minutes} m`;
+}
+
+function isDateInCurrentWeek(date) {
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  const day = today.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  startOfWeek.setDate(today.getDate() + diff);
+  startOfWeek.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  const inputDate = new Date(date);
+  return inputDate >= startOfWeek && inputDate <= endOfWeek;
+}
+
+function calculateTimeDifferenceFromNow(firstTimestamp) {
+  const currentTime = new Date();
+  return currentTime - firstTimestamp;
 }
