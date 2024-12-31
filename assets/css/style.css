@@ -87,23 +87,12 @@ section {
   background-color: #E31C25;
 }
 
-/* 
-@media screen and (max-width: 575.98px) {
-  #home  {
-    position: sticky;
-    top: 0;
-    z-index: 999;
-  }
-} */
-
 @media screen and (max-width: 575.98px) {
   #home .header {
     position: fi;
     top: 0;
     z-index: 999;
-    /* Ensures the header is on top of other content */
     background-color: rgba(0, 0, 0, 0.8);
-    /* Adds a background for better visibility */
   }
 
   #home .header .container {
@@ -977,13 +966,13 @@ section {
   transition: all ease-in-out .5s;
 }
 
-#resume .my-wrapper .left-wrapper .content .list-inner ol li:nth-child(2),
-#resume .my-wrapper .right-wrapper .content .list-inner ol li:nth-child(2) {
+#resume .my-wrapper .left-wrapper .content .list-inner ol li:nth-child(3),
+#resume .my-wrapper .right-wrapper .content .list-inner ol li:nth-child(3) {
   padding-bottom: .3125rem;
 }
 
-#resume .my-wrapper .left-wrapper .content .list-inner ol li:nth-child(2)::before,
-#resume .my-wrapper .right-wrapper .content .list-inner ol li:nth-child(2)::before {
+#resume .my-wrapper .left-wrapper .content .list-inner ol li:nth-child(3)::before,
+#resume .my-wrapper .right-wrapper .content .list-inner ol li:nth-child(3)::before {
   top: 0;
 }
 
