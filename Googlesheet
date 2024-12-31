@@ -35,6 +35,7 @@ function calculateInOutTimesForSheet() {
       updateRowTotals(sheet, i, totalInTime, totalOutTime);
     }
   }
+
 }
 
 function calculateRowTimes(rowData) {
@@ -65,7 +66,7 @@ function calculateRowTimes(rowData) {
       }
       const inDuration = outDateTime - inDateTime;
       totalInTime += inDuration;
-      const nextInTime = j + 2 < rowData.length ? rowData[j + 2] : null;
+      const nextInTime = (j + 2 < rowData.length && String(rowData[j + 2]).trim() !== '') ? rowData[j + 2] : null;
       if (nextInTime) {
         const nextInDateTime = parseTime(dayDate, nextInTime);
         const outDuration = nextInDateTime - outDateTime;
@@ -73,7 +74,6 @@ function calculateRowTimes(rowData) {
       }
     }
   }
-
   return { totalInTime, totalOutTime, firstTimestamp };
 }
 
@@ -87,17 +87,16 @@ function calculateEscapeTime(dayDate, totalInTime, totalOutTime, firstTimestamp,
   escapeHour = escapeHour % 12 || 12;
   const escapeTimeFormatted = `${escapeHour}:${String(escapeMinute).padStart(2, '0')} ${period}`;
 
-  const remainingTimeInMs = eightAndHalfHoursInMs - totalInTime;
+  const remainingTimeInMs = totalInTime - eightAndHalfHoursInMs;
   const remainingTimeFormatted = `( ${formatDuration(remainingTimeInMs)} )`;
 
   if (isToday) {
     const todayIndex = daysOfWeek.indexOf(dayDate.toString().slice(0, 3));
     if (todayIndex > 0) {
       const pastDaysLength = daysOfWeek.slice(0, todayIndex).length;
-      totalPlusMinus = ((eightAndHalfHoursInMs * pastDaysLength) + totalInTime) - weeklyTotalInTime;
+      totalPlusMinus = weeklyTotalInTime - ((eightAndHalfHoursInMs * pastDaysLength) + (Math.min(totalInTime, eightAndHalfHoursInMs)));
     }
   }
-
   return { escapeTimeFormatted, remainingTimeFormatted, totalPlusMinus };
 }
 
@@ -109,7 +108,7 @@ function updateEscapeTimeColumn(sheet, rowIndex, escapeTimeFormatted, remainingT
 function updateWeeklyTotals(sheet, rowIndex, weeklyTotalInTime, totalPlusMinus, dayDate) {
   const currentWeek = isDateInCurrentWeek(dayDate);
   sheet.getRange(rowIndex + 1, 2).setValue(`${formatDuration(weeklyTotalInTime)}${currentWeek ? ` (${formatDuration(totalPlusMinus)})` : ""}`);
-  sheet.getRange(rowIndex + 1, 3).setValue(formatDuration((42.5 * 60 * 60 * 1000) - weeklyTotalInTime));
+  sheet.getRange(rowIndex + 1, 3).setValue(formatDuration(weeklyTotalInTime - (42.5 * 60 * 60 * 1000)));
 }
 
 function updateRowTotals(sheet, rowIndex, totalInTime, totalOutTime) {
@@ -118,11 +117,16 @@ function updateRowTotals(sheet, rowIndex, totalInTime, totalOutTime) {
 }
 
 function parseTime(date, time) {
-  if (time instanceof Date) {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.getHours(), time.getMinutes());
-  } else {
-    const [hours, minutes] = time.split(':').map(Number);
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
+  try {
+    if (time instanceof Date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.getHours(), time.getMinutes());
+    } else {
+      console.log(time);
+      const [hours, minutes] = time.split(':').map(Number);
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
+    }
+  } catch (error) {
+    logError(error.message, time);
   }
 }
 
@@ -150,7 +154,21 @@ function isDateInCurrentWeek(date) {
 function checkIfToday(date) {
   const today = new Date();
   return date.getDate() === today.getDate() &&
-         date.getMonth() === today.getMonth() &&
-         date.getFullYear() === today.getFullYear();
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear();
 }
 
+function logError(message, additionalInfo = "") {
+  const sheetName = "Error Log"; // Name of the sheet where you want to log errors
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let logSheet = spreadsheet.getSheetByName(sheetName);
+
+  // Create the Error Log sheet if it doesn't exist
+  if (!logSheet) {
+    logSheet = spreadsheet.insertSheet(sheetName);
+    logSheet.appendRow(["Timestamp", "Error Message", "Additional Info"]);
+  }
+
+  // Add the error message to the log
+  logSheet.appendRow([new Date(), message, additionalInfo]);
+}
