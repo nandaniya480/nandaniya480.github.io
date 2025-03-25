@@ -7,6 +7,8 @@ function calculateInOutTimesForSheet() {
   let weeklyTotalInTime = 0;
   let totalPlusMinus = 0;
   const eightAndHalfHoursInMs = 8.5 * 60 * 60 * 1000;
+  const fullWeekHoursInMs = 42.5 * 60 * 60 * 1000;
+
 
   for (let i = 1; i < data.length; i++) {
     const { totalInTime, totalOutTime, firstTimestamp } = calculateRowTimes(data[i]);
@@ -28,7 +30,7 @@ function calculateInOutTimesForSheet() {
     }
 
     if (dayName === "Sun") {
-      updateWeeklyTotals(sheet, i, weeklyTotalInTime, totalPlusMinus, dayDate);
+      updateWeeklyTotals(sheet, i, weeklyTotalInTime, totalPlusMinus, dayDate, fullWeekHoursInMs);
       weeklyTotalInTime = 0;
       totalPlusMinus = 0;
     } else {
@@ -105,10 +107,10 @@ function updateEscapeTimeColumn(sheet, rowIndex, escapeTimeFormatted, remainingT
   sheet.getRange(rowIndex + 1, 4).setValue(`${escapeTimeFormatted} ${remainingTimeFormatted}${currentTime}`);
 }
 
-function updateWeeklyTotals(sheet, rowIndex, weeklyTotalInTime, totalPlusMinus, dayDate) {
+function updateWeeklyTotals(sheet, rowIndex, weeklyTotalInTime, totalPlusMinus, dayDate, fullWeekHoursInMs) {
   const currentWeek = isDateInCurrentWeek(dayDate);
   sheet.getRange(rowIndex + 1, 2).setValue(`${formatDuration(weeklyTotalInTime)}${currentWeek ? ` (${formatDuration(totalPlusMinus)})` : ""}`);
-  sheet.getRange(rowIndex + 1, 3).setValue(formatDuration(weeklyTotalInTime - (42.5 * 60 * 60 * 1000)));
+  sheet.getRange(rowIndex + 1, 3).setValue(formatDuration(weeklyTotalInTime - fullWeekHoursInMs));
 }
 
 function updateRowTotals(sheet, rowIndex, totalInTime, totalOutTime) {
