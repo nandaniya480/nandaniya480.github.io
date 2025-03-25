@@ -7,10 +7,15 @@ function calculateInOutTimesForSheet() {
   let weeklyTotalInTime = 0;
   let totalPlusMinus = 0;
   const eightAndHalfHoursInMs = 8.5 * 60 * 60 * 1000;
-  const fullWeekHoursInMs = 42.5 * 60 * 60 * 1000;
-
+  let fullWeekHoursInMs = 42.5 * 60 * 60 * 1000;
 
   for (let i = 1; i < data.length; i++) {
+    const isLeaveDay = data[i][4] === "Leave";
+    if (isLeaveDay) {
+      fullWeekHoursInMs = -eightAndHalfHoursInMs;
+      totalPlusMinus = -eightAndHalfHoursInMs;
+    }
+
     const { totalInTime, totalOutTime, firstTimestamp } = calculateRowTimes(data[i]);
     const dayDate = data[i][0];
     const dayName = dayDate.toString().slice(0, 3);
@@ -33,6 +38,7 @@ function calculateInOutTimesForSheet() {
       updateWeeklyTotals(sheet, i, weeklyTotalInTime, totalPlusMinus, dayDate, fullWeekHoursInMs);
       weeklyTotalInTime = 0;
       totalPlusMinus = 0;
+      fullWeekHoursInMs = 42.5 * 60 * 60 * 1000;
     } else {
       updateRowTotals(sheet, i, totalInTime, totalOutTime);
     }
@@ -47,7 +53,7 @@ function calculateRowTimes(rowData) {
   const currentDate = new Date();
   const currentTime = currentDate.toLocaleTimeString('en-US', { hour12: false });
 
-  for (let j = 4; j < rowData.length; j += 2) {
+  for (let j = 5; j < rowData.length; j += 2) {
     const inTime = rowData[j];
     let outTime = rowData[j + 1];
     const year = dayDate.getFullYear();
