@@ -14,8 +14,7 @@ function calculateInOutTimesForSheet() {
     const isLeaveDay = data[i][4] === "Leave";
     if (isLeaveDay) {
       fullWeekHoursInMs = fullWeekHoursInMs - eightAndHalfHoursInMs;
-      // totalPlusMinus = totalPlusMinus - eightAndHalfHoursInMs;
-      leaveDaysInWeek++; // Increment leave days count
+      leaveDaysInWeek++;
     }
 
     const { totalInTime, totalOutTime, firstTimestamp } = calculateRowTimes(data[i]);
@@ -28,11 +27,8 @@ function calculateInOutTimesForSheet() {
     }
 
     if (firstTimestamp) {
-      const { escapeTimeFormatted, remainingTimeFormatted, totalPlusMinus: updatedTotalPlusMinus } = calculateEscapeTime(
-        dayDate, totalInTime, totalOutTime, firstTimestamp, weeklyTotalInTime, totalPlusMinus, eightAndHalfHoursInMs, isToday, daysOfWeek
-      );
+      const { escapeTimeFormatted, remainingTimeFormatted, totalPlusMinus: updatedTotalPlusMinus } = calculateEscapeTime(dayDate, totalInTime, totalOutTime, firstTimestamp, weeklyTotalInTime, totalPlusMinus, eightAndHalfHoursInMs, isToday, daysOfWeek, leaveDaysInWeek);
       totalPlusMinus = updatedTotalPlusMinus;
-
       updateEscapeTimeColumn(sheet, i, escapeTimeFormatted, remainingTimeFormatted, isToday);
     }
 
@@ -88,7 +84,7 @@ function calculateRowTimes(rowData) {
   return { totalInTime, totalOutTime, firstTimestamp };
 }
 
-function calculateEscapeTime(dayDate, totalInTime, totalOutTime, firstTimestamp, weeklyTotalInTime, totalPlusMinus, eightAndHalfHoursInMs, isToday, daysOfWeek) {
+function calculateEscapeTime(dayDate, totalInTime, totalOutTime, firstTimestamp, weeklyTotalInTime, totalPlusMinus, eightAndHalfHoursInMs, isToday, daysOfWeek, leaveDaysInWeek) {
   const addTime = eightAndHalfHoursInMs + totalOutTime;
   const estimatedOutTime = new Date(firstTimestamp.getTime() + addTime);
 
@@ -105,7 +101,7 @@ function calculateEscapeTime(dayDate, totalInTime, totalOutTime, firstTimestamp,
     const todayIndex = daysOfWeek.indexOf(dayDate.toString().slice(0, 3));
     if (todayIndex > 0) {
       const pastDaysLength = daysOfWeek.slice(0, todayIndex).length;
-      totalPlusMinus = weeklyTotalInTime - ((eightAndHalfHoursInMs * pastDaysLength) + (Math.min(totalInTime, eightAndHalfHoursInMs)));
+      totalPlusMinus = weeklyTotalInTime - ((eightAndHalfHoursInMs * (pastDaysLength - leaveDaysInWeek)) + (Math.min(totalInTime, eightAndHalfHoursInMs)));
     }
   }
   return { escapeTimeFormatted, remainingTimeFormatted, totalPlusMinus };
