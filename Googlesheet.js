@@ -123,18 +123,38 @@ function updateRowTotals(sheet, rowIndex, totalInTime, totalOutTime) {
   sheet.getRange(rowIndex + 1, 3).setValue(totalOutTime > 0 ? formatDuration(totalOutTime) : "");
 }
 
+// function parseTime(date, timeString) {
+//   try {
+//     if (timeString.getHours() && timeString.getMinutes()) {
+//       return new Date(date.getFullYear(), date.getMonth(), date.getDate(), timeString.getHours(), timeString.getMinutes());
+//     } else {
+//       const [hours, minutes] = timeString.split(':').map(Number);
+//       return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
+//     }
+//   } catch (error) {
+//     logError(error.message, [date, timeString]);
+//   }
+// }
+
 function parseTime(date, timeString) {
   try {
-    if (timeString.getHours() && timeString.getMinutes()) {
+    if (timeString instanceof Date) {
       return new Date(date.getFullYear(), date.getMonth(), date.getDate(), timeString.getHours(), timeString.getMinutes());
-    } else {
+    } else if (typeof timeString === 'string' && timeString.includes(':')) {
       const [hours, minutes] = timeString.split(':').map(Number);
+      if (isNaN(hours) || isNaN(minutes)) {
+        throw new Error(`Invalid time format: ${timeString}`);
+      }
       return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
+    } else {
+      throw new Error("Invalid timeString format.");
     }
   } catch (error) {
     logError(error.message, [date, timeString]);
+    return null;
   }
 }
+
 
 function formatDuration(duration) {
   const isNegative = duration < 0;
